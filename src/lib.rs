@@ -1,5 +1,14 @@
+//! Establish connections to, and run commands on remote machines via ssh.
+//!
+//! `sessh` implements a lightweight wrapper over the [`ssh2`](https://crates.io/crates/ssh2) crate which makes
+//! it easy to connect to and run commands on remote machines.
+//!
+//! See [`Session`](struct.Session.html) for more details.
+
+use failure::{bail, format_err};
 use failure::{Context, Error, ResultExt};
 use slog;
+use slog::{trace, warn};
 use ssh2;
 use std::net::{SocketAddr, TcpStream};
 use std::path::Path;
@@ -15,12 +24,20 @@ use std::time::{Duration, Instant};
 /// To execute a command and get its `STDOUT` output, use
 /// [`Session#cmd`](struct.Session.html#method.cmd).
 pub struct Session {
+    /// The connected address
     pub addr: SocketAddr,
     ssh: ssh2::Session,
     _stream: TcpStream,
 }
 
 impl Session {
+    /// Connect to the remote machine at `addr`, using user `username`.
+    ///
+    /// Analogous to `ssh -i <key> <username>@<addr>`.
+    ///
+    /// If `timeout` is `None`, will block for a TCP response forever.
+    ///
+    /// If `key` is `None`, attempts to use ssh-agent authentication.
     pub fn connect(
         log: &slog::Logger,
         username: &str,
@@ -28,7 +45,6 @@ impl Session {
         key: Option<&Path>,
         timeout: Option<Duration>,
     ) -> Result<Self, Error> {
-        // TODO: instead of max time, keep trying as long as instance is still active
         let start = Instant::now();
         let tcp = loop {
             match TcpStream::connect_timeout(&addr, Duration::from_secs(3)) {
@@ -41,23 +57,20 @@ impl Session {
                         } else {
                             Err(Error::from(e).context("failed to connect to ssh port"))?;
                         }
-                    } else {
-                        if start.elapsed() > Duration::from_secs(30) {
-                            Err(Error::from(e).context("failed to connect to ssh port"))?;
-                        }
+                    } else if start.elapsed() > Duration::from_secs(30) {
+                        Err(Error::from(e).context("failed to connect to ssh port"))?;
                     }
                 }
             }
         };
 
-        let mut sess = ssh2::Session::new().ok_or(Context::new("libssh2 not available"))?;
+        let mut sess = ssh2::Session::new().ok_or_else(|| Context::new("libssh2 not available"))?;
         sess.handshake(&tcp)
             .context("failed to perform ssh handshake")?;
         if let Some(key) = key {
             sess.userauth_pubkey_file(username, None, key, None)
                 .context("failed to authenticate ssh session with key")?;
         } else {
-            // TODO doesn't work, see crate::providers::baremetal::test
             let mut ag = sess.agent()?;
             ag.connect().context("could not connect to ssh-agent")?;
             ag.list_identities()
@@ -82,7 +95,7 @@ impl Session {
         })
     }
 
-    /// Issue the given command and return the command's raw standard output.
+    /// Issue the given command and return the command's raw stdout and stderr.
     pub fn cmd_raw(&self, cmd: &str) -> Result<(Vec<u8>, Vec<u8>), Error> {
         use std::io::Read;
 
@@ -151,7 +164,7 @@ impl Session {
         }
     }
 
-    /// Issue the given command and return the command's standard output.
+    /// Issue the given command and return the command's stdout and stderr.
     pub fn cmd(&self, cmd: &str) -> Result<(String, String), Error> {
         let (out, err) = self.cmd_raw(cmd)?;
         Ok((String::from_utf8(out)?, String::from_utf8(err)?))

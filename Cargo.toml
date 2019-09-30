@@ -1,0 +1,28 @@
+[package]
+name = "sessh"
+version = "0.1.0"
+
+description = "Convenient wrapper for SSH sessions"
+readme = "README.md"
+
+authors = ["Jon Gjengset <jon@thesquareplanet.com>", "Akshay Narayan <akshayn@mit.edu>"]
+
+homepage = "https://github.com/akshayknarayan/sessh"
+repository = "https://github.com/akshayknarayan/sessh.git"
+
+keywords = ["ssh"]
+categories = []
+
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+[badges]
+maintenance = { status = "passively-maintained" }
+
+[features]
+debug = ["slog/max_level_trace", "slog/release_max_level_debug"]
+
+[dependencies]
+ssh2 = "0.3.2"
+failure = "0.1.1"
+slog = "2"
