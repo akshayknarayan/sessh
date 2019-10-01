@@ -184,3 +184,33 @@ impl DerefMut for Session {
         &mut self.ssh
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Session;
+    use failure::Error;
+    use slog::o;
+
+    pub fn test_logger() -> slog::Logger {
+        use slog::Drain;
+        let plain = slog_term::PlainSyncDecorator::new(slog_term::TestStdoutWriter);
+        let drain = slog_term::FullFormat::new(plain).build().fuse();
+        slog::Logger::root(drain, o!())
+    }
+
+    #[test]
+    fn localhost() -> Result<(), Error> {
+        let log = test_logger();
+
+        let curr_user = std::process::Command::new("whoami").output()?.stdout;
+        let curr_user = String::from_utf8(curr_user)?;
+        let curr_user = curr_user.split_whitespace().next().unwrap();
+        slog::trace!(log, "current user"; "user" => &curr_user);
+        let s = Session::connect(&log, curr_user, "127.0.0.1:22".parse()?, None, None)?;
+        slog::trace!(log, "connected to localhost");
+        let (ssh_user, _) = s.cmd("whoami")?;
+        let ssh_user = ssh_user.split_whitespace().next().unwrap();
+        assert_eq!(ssh_user, curr_user);
+        Ok(())
+    }
+}

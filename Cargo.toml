@@ -26,3 +26,6 @@ debug = ["slog/max_level_trace", "slog/release_max_level_debug"]
 ssh2 = "0.3.2"
 failure = "0.1.1"
 slog = "2"
+
+[dev-dependencies]
+slog-term = "2"
