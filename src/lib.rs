@@ -52,7 +52,7 @@ impl Session {
                 Err(e) => {
                     if let Some(to) = timeout {
                         if start.elapsed() <= to {
-                            warn!(log, "still can't ssh to {}", addr);
+                            trace!(log, "still can't ssh to {}", addr);
                             thread::sleep(Duration::from_secs(1));
                         } else {
                             Err(Error::from(e).context("failed to connect to ssh port"))?;
@@ -63,6 +63,8 @@ impl Session {
                 }
             }
         };
+
+        trace!(log, "ssh: connection established"; "addr" => addr, "elapsed" => ?start.elapsed());
 
         let mut sess = ssh2::Session::new().ok_or_else(|| Context::new("libssh2 not available"))?;
         sess.handshake(&tcp)
@@ -78,7 +80,7 @@ impl Session {
             let ok = ag.identities().flat_map(|x| x).any(|id| {
                 ag.userauth(username, &id)
                     .map_err(|e| {
-                        trace!(log, "agent identity failed"; "username" => username,  "identity" => id.comment(), "err" => ?e);
+                        warn!(log, "agent identity failed"; "username" => username,  "identity" => id.comment(), "err" => ?e);
                         e
                     })
                     .is_ok()
