@@ -201,6 +201,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // ignore by default since there is no ssh-agent in travis ci
     fn localhost() -> Result<(), Error> {
         let log = test_logger();
 
