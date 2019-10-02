@@ -6,7 +6,7 @@
 //! See [`Session`](struct.Session.html) for more details.
 
 use failure::{bail, format_err};
-use failure::{Context, Error, ResultExt};
+use failure::{Error, ResultExt};
 use slog;
 use slog::{trace, warn};
 use ssh2;
@@ -27,7 +27,6 @@ pub struct Session {
     /// The connected address
     pub addr: SocketAddr,
     ssh: ssh2::Session,
-    _stream: TcpStream,
 }
 
 impl Session {
@@ -66,8 +65,9 @@ impl Session {
 
         trace!(log, "ssh: connection established"; "addr" => addr, "elapsed" => ?start.elapsed());
 
-        let mut sess = ssh2::Session::new().ok_or_else(|| Context::new("libssh2 not available"))?;
-        sess.handshake(&tcp)
+        let mut sess = ssh2::Session::new().context("libssh2 not available")?;
+        sess.set_tcp_stream(tcp);
+        sess.handshake()
             .context("failed to perform ssh handshake")?;
         if let Some(key) = key {
             sess.userauth_pubkey_file(username, None, key, None)
@@ -90,11 +90,7 @@ impl Session {
             }
         }
 
-        Ok(Session {
-            addr,
-            ssh: sess,
-            _stream: tcp,
-        })
+        Ok(Session { addr, ssh: sess })
     }
 
     /// Issue the given command and return the command's raw stdout and stderr.
