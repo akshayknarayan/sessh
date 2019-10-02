@@ -29,6 +29,13 @@ pub struct Session {
     ssh: ssh2::Session,
 }
 
+impl From<ssh2::Session> for Session {
+    fn from(s: ssh2::Session) -> Self {
+        let addr = s.tcp_stream().as_ref().unwrap().peer_addr().unwrap();
+        Self { addr, ssh: s }
+    }
+}
+
 impl Session {
     /// Connect to the remote machine at `addr`, using user `username`.
     ///
