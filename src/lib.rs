@@ -5,6 +5,7 @@
 //!
 //! See [`Session`](struct.Session.html) for more details.
 
+use educe::Educe;
 use failure::{bail, format_err};
 use failure::{Error, ResultExt};
 use slog;
@@ -23,9 +24,12 @@ use std::time::{Duration, Instant};
 ///
 /// To execute a command and get its `STDOUT` output, use
 /// [`Session#cmd`](struct.Session.html#method.cmd).
+#[derive(Educe)]
+#[educe(Debug)]
 pub struct Session {
     /// The connected address
     pub addr: SocketAddr,
+    #[educe(Debug(ignore))]
     ssh: ssh2::Session,
 }
 
