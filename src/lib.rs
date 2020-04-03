@@ -27,8 +27,8 @@ struct FileTransferFailure {
 
 /// An established SSH session.
 ///
-/// See [`ssh2::Session`](https://docs.rs/ssh2/0.3/ssh2/struct.Session.html) in general, and
-/// [`ssh2::Session#channel_session`](https://docs.rs/ssh2/0.3/ssh2/struct.Session.html#method.channel_session)
+/// See [`ssh2::Session`](https://docs.rs/ssh2/0.8/ssh2/struct.Session.html) in general, and
+/// [`ssh2::Session#channel_session`](https://docs.rs/ssh2/0.8/ssh2/struct.Session.html#method.channel_session)
 /// specifically, for how to execute commands on the remote host.
 ///
 /// To execute a command and get its `STDOUT` output, use
@@ -44,7 +44,10 @@ pub struct Session {
 
 impl From<ssh2::Session> for Session {
     fn from(s: ssh2::Session) -> Self {
-        let addr = s.tcp_stream().as_ref().unwrap().peer_addr().unwrap();
+        use std::os::unix::io::{AsRawFd, FromRawFd};
+        let addr = unsafe { std::net::TcpStream::from_raw_fd(s.as_raw_fd()) }
+            .peer_addr()
+            .unwrap();
         Self { addr, ssh: s }
     }
 }
@@ -97,7 +100,7 @@ impl Session {
             ag.connect().context("could not connect to ssh-agent")?;
             ag.list_identities()
                 .context("could not list ssh-agent identities")?;
-            let ok = ag.identities().flat_map(|x| x).any(|id| {
+            let ok = ag.identities()?.into_iter().any(|id| {
                 ag.userauth(username, &id)
                     .map_err(|e| {
                         warn!(log, "agent identity failed"; "username" => username,  "identity" => id.comment(), "err" => ?e);
