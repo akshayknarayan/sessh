@@ -30,3 +30,4 @@ slog = "2"
 
 [dev-dependencies]
 slog-term = "2"
+tempfile = "3.1.0"
