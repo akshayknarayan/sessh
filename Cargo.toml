@@ -1,6 +1,6 @@
 [package]
 name = "sessh"
-version = "0.1.3"
+version = "0.1.4"
 
 description = "Convenient wrapper for SSH sessions"
 readme = "README.md"
